@@ -9,16 +9,21 @@
         <script src="[https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js](https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js)"></script>
         <script src="[https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js](https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js)"></script>
         <style>
-            /* Fix for the background height */
+            /*
+             * This is the fix for the background color issue.
+             * By setting html and body to 100% height, you ensure
+             * the background color fills the entire screen.
+             */
             html, body {
                 height: 100%;
-                margin: 0;
             }
+    
             body {
                 font-family: 'Inter', sans-serif;
-                background: linear-gradient(to right, #4facfe, #00f2fe);
-                background-size: cover;
-                color: #1a202c;
+                /* Using min-h-screen instead of just h-screen on the body
+                 * is a good practice to ensure it stretches to fit content
+                 * if the content exceeds the viewport height. */
+                min-height: 100vh;
             }
             #chat-container::-webkit-scrollbar {
                 width: 8px;
@@ -92,7 +97,7 @@
         </style>
         <link rel="stylesheet" href="[https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap](https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap)">
     </head>
-    <body class="dark:bg-gray-900 text-gray-900 dark:text-gray-100">
+    <body class="bg-blue-100 dark:bg-gray-900 text-gray-900 dark:text-gray-100">
     
         <div class="container mx-auto p-4 h-screen flex flex-col md:flex-row gap-4">
             <div class="md:w-1/2 h-1/2 md:h-full flex flex-col items-center justify-center bg-white dark:bg-gray-800 rounded-lg shadow-lg">
@@ -116,7 +121,7 @@
                     <div class="flex items-center space-x-2">
                         <input type="text" id="text-input" class="flex-1 p-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Type your message...">
     
-                        <div class="flex space-x-2">
+                        <div class="flex space-x-2 **flex-shrink-0**">
                             <button id="send-btn" class="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 flex items-center justify-center">
                                 <svg xmlns="[http://www.w3.org/2000/svg](http://www.w3.org/2000/svg)" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-send"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
                             </button>
@@ -125,7 +130,7 @@
                             </button>
                         </div>
                         
-                        <select id="language-selector" class="p-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <select id="language-selector" class="p-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 **flex-shrink-0**">
                             <option value="en-US" selected>English</option>
                             <option value="ar-SA">العربية</option>
                         </select>
@@ -144,14 +149,14 @@
                 renderer.setSize(container.clientWidth, container.clientHeight);
                 container.appendChild(renderer.domElement);
                 
-                // Set the background color here (softer blue)
-                const backgroundColor = new THREE.Color(0x89bdd3);
+                // Set the background color here
+                const backgroundColor = new THREE.Color(0x3B82F6); // Tailwind's blue-500 color
                 scene.background = backgroundColor;
     
-                // Lighting (reduced intensity)
-                const ambientLight = new THREE.AmbientLight(0xffffff, 0.4);
+                // Lighting
+                const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
                 scene.add(ambientLight);
-                const directionalLight = new THREE.DirectionalLight(0xffffff, 0.6);
+                const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
                 directionalLight.position.set(5, 10, 7.5);
                 scene.add(directionalLight);
                 
@@ -174,14 +179,14 @@
                 
                 // Add OrbitControls to the scene
                 const controls = new THREE.OrbitControls(camera, renderer.domElement);
-                controls.enableDamping = true;
+                controls.enableDamping = true; // for a more fluid feel
                 controls.dampingFactor = 0.25;
                 controls.screenSpacePanning = false;
-                controls.maxPolarAngle = Math.PI / 2;
+                controls.maxPolarAngle = Math.PI / 2; // don't allow camera to go below the floor
     
                 function animate() {
                     requestAnimationFrame(animate);
-                    controls.update();
+                    controls.update(); // only required if controls.enableDamping is set to true
                     renderer.render(scene, camera);
                 }
                 animate();
@@ -192,7 +197,7 @@
                     renderer.setSize(container.clientWidth, container.clientHeight);
                 });
     
-                // --- CHAT LOGIC (remains the same) ---
+                // --- CHAT LOGIC ---
                 const chatContainer = document.getElementById('chat-container');
                 const textInput = document.getElementById('text-input');
                 const sendBtn = document.getElementById('send-btn');
@@ -201,6 +206,7 @@
                 const typingIndicator = document.getElementById('typing-indicator');
                 const languageSelector = document.getElementById('language-selector');
     
+                // --- Gemini API Prompting ---
                 let chatHistory = [{
                     role: "user",
                     parts: [{
@@ -218,6 +224,7 @@
                     }]
                 }];
     
+                // --- SPEECH RECOGNITION (VOICE INPUT) ---
                 const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
                 let recognition;
                 let isRecording = false;
@@ -242,12 +249,11 @@
                     };
     
                     recognition.onresult = (event) => {
-                        const transcript = event.results && event.results.length > 0 && event.results.length > 0 ? event.results?.[0]?.[0]?.transcript : '';
-                        const detectedLang = event.results?.[0]?.lang;
+                        const transcript = event.results[0][0].transcript;
+                        const detectedLang = event.results[0].lang;
                         
-                        if (detectedLang) {
-                            languageSelector.value = detectedLang;
-                        }
+                        languageSelector.value = detectedLang;
+                        
                         textInput.value = transcript;
                         sendMessage();
                     };
@@ -266,13 +272,14 @@
     
                 micBtn.addEventListener('click', () => {
                     if (!isRecording) {
-                        recognition.lang = languageSelector.value;
+                        recognition.lang = '';
                         recognition.start();
                     } else {
                         recognition.stop();
                     }
                 });
     
+                // --- SPEECH SYNTHESIS (VOICE OUTPUT) ---
                 const synth = window.speechSynthesis;
                 let voices = [];
     
@@ -289,33 +296,37 @@
                 populateVoiceList();
     
                 function speak(text) {
+                    // Stop any ongoing speech immediately
                     synth.cancel();
+    
                     if (text !== '') {
                         const utterThis = new SpeechSynthesisUtterance(text);
                         
                         utterThis.onstart = () => {
-                            console.log("Speech started.");
+                            console.log("Speech started. Animate your model's mouth here.");
                         };
     
                         utterThis.onend = function (event) {
                             console.log('SpeechSynthesis.utterance.onend');
+                            console.log("Speech ended. Reset your model's mouth here.");
                         }
     
                         utterThis.onerror = function (event) {
                             console.error('SpeechSynthesis.utterance.onerror', event);
+                            console.log("Speech error. Reset your model's mouth here.");
                         }
                         
                         let selectedVoice;
                         const selectedLanguage = languageSelector.value;
     
                         if (selectedLanguage.startsWith('ar')) {
-                            selectedVoice = voices.find(voice => voice.lang.startsWith('ar') && (voice.name.includes("Sayda") || voice.name.includes("Arabic")));
+                            selectedVoice = voices.find(voice => voice.lang.startsWith('ar') && voice.name.includes("Sayda") || voice.name.includes("Arabic"));
                             if (!selectedVoice) {
                                 selectedVoice = voices.find(voice => voice.lang.startsWith('ar'));
                                 console.warn("Could not find a specific Arabic voice. Falling back to a generic one.");
                             }
-                        } else {
-                            selectedVoice = voices.find(voice => voice.lang.startsWith('en') && (voice.name.includes("Google") || voice.name.includes("UK English") || voice.name.includes("US English")));
+                        } else { // Default to English if not Arabic
+                            selectedVoice = voices.find(voice => voice.lang.startsWith('en') && voice.name.includes("Google") || voice.name.includes("UK English") || voice.name.includes("US English"));
                             if (!selectedVoice) {
                                 selectedVoice = voices.find(voice => voice.lang.startsWith('en'));
                                 console.warn("Could not find a specific English voice. Falling back to a generic one.");
@@ -327,6 +338,7 @@
                     }
                 }
     
+                // --- GEMINI API INTEGRATION ---
                 const apiKey = "";
                 const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
     
@@ -357,8 +369,9 @@
                                 const result = await response.json();
                                 typingIndicator.style.display = 'none';
                                 if (result.candidates && result.candidates.length > 0 &&
-                                    result.candidates?.[0]?.content?.parts?.length > 0) {
-                                    const text = result.candidates?.[0]?.content?.parts?.[0]?.text;
+                                    result.candidates[0].content && result.candidates[0].content.parts &&
+                                    result.candidates[0].content.parts.length > 0) {
+                                    const text = result.candidates[0].content.parts[0].text;
                                     chatHistory.push({ role: "model", parts: [{ text: text }] });
                                     return text;
                                 }
@@ -386,10 +399,12 @@
                     return "I'm currently unavailable. Please try again later.";
                 }
     
+                // --- UI AND CHAT FLOW ---
                 function addMessageToChat(text, sender) {
                     const messageDiv = document.createElement('div');
                     messageDiv.className = `flex items-start space-x-2 mb-4 ${sender === 'user' ? 'justify-end' : ''}`;
                     
+                    // Bot avatar
                     const botAvatarUrl = './pics/ensan1.png'; 
                     
                     const messageBg = sender === 'user' ? 'bg-blue-500 text-white' : 'bg-gray-200 dark:bg-gray-700';
@@ -426,7 +441,7 @@
                     }
                 });
                 
-                const initialGreeting = chatHistory.find(item => item.role === 'model')?.parts?.[0]?.text || '';
+                const initialGreeting = chatHistory.find(item => item.role === 'model').parts[0].text;
                 addMessageToChat(initialGreeting, 'bot');
             };
         </script>
