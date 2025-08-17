@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Live Avatar Chat</title>
+    <link href="./dist/output.css" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        #chat-container::-webkit-scrollbar {
+            width: 8px;
+        }
+        #chat-container::-webkit-scrollbar-track {
+            background: #f1f1f1;
+        }
+        #chat-container::-webkit-scrollbar-thumb {
+            background: #888;
+            border-radius: 4px;
+        }
+        #chat-container::-webkit-scrollbar-thumb:hover {
+            background: #555;
+            border-radius: 4px;
+        }
+        .lds-ellipsis {
+            display: inline-block;
+            position: relative;
+            width: 80px;
+            height: 20px;
+        }
+        .lds-ellipsis div {
+            position: absolute;
+            top: 5px;
+            width: 13px;
+            height: 13px;
+            border-radius: 50%;
+            background: #3B82F6;
+            animation-timing-function: cubic-bezier(0, 1, 1, 0);
+        }
+        .lds-ellipsis div:nth-child(1) {
+            left: 8px;
+            animation: lds-ellipsis1 0.6s infinite;
+        }
+        .lds-ellipsis div:nth-child(2) {
+            left: 8px;
+            animation: lds-ellipsis2 0.6s infinite;
+        }
+        .lds-ellipsis div:nth-child(3) {
+            left: 32px;
+            animation: lds-ellipsis2 0.6s infinite;
+        }
+        .lds-ellipsis div:nth-child(4) {
+            left: 56px;
+            animation: lds-ellipsis3 0.6s infinite;
+        }
+        @keyframes lds-ellipsis1 {
+            0% {
+                transform: scale(0);
+            }
+            100% {
+                transform: scale(1);
+            }
+        }
+        @keyframes lds-ellipsis3 {
+            0% {
+                transform: scale(1);
+            }
+            100% {
+                transform: scale(0);
+            }
+        }
+        @keyframes lds-ellipsis2 {
+            0% {
+                transform: translate(0, 0);
+            }
+            100% {
+                transform: translate(24px, 0);
+            }
+        }
+    </style>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+</head>
+<body class="bg-blue-100 dark:bg-gray-900 text-gray-900 dark:text-gray-100">
+
+    <div class="container mx-auto p-4 h-screen flex flex-col md:flex-row gap-4">
+        <div class="md:w-1/2 h-1/2 md:h-full flex flex-col items-center justify-center bg-white dark:bg-gray-800 rounded-lg shadow-lg">
+            <div id="avatar-container" class="w-full h-full"></div>
+        </div>
+
+        <div class="md:w-1/2 h-1/2 md:h-full flex flex-col bg-white dark:bg-gray-800 rounded-lg shadow-lg">
+            <div id="chat-container" class="flex-1 p-4 overflow-y-auto">
+            </div>
+            <div id="typing-indicator" class="p-4 hidden">
+                <div class="flex items-center space-x-2">
+                    <img src="./pics/ensan1.png" alt="Bot Avatar" class="w-10 h-10 rounded-full flex-shrink-0">
+                    <div>
+                        <div class="bg-gray-200 dark:bg-gray-700 rounded-lg p-3">
+                            <div class="lds-ellipsis"><div></div><div></div><div></div><div></div></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="p-4 border-t border-gray-200 dark:border-gray-700">
+                <div class="flex items-center space-x-2">
+                    <input type="text" id="text-input" class="flex-1 p-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Type your message...">
+
+                    <div class="flex space-x-2">
+                        <button id="send-btn" class="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 flex items-center justify-center">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-send"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
+                        </button>
+                        <button id="mic-btn" class="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 focus:outline-none focus:ring-2 focus:ring-green-500 flex items-center justify-center">
+                            <svg id="mic-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-mic"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="23"></line><line x1="8" y1="23" x2="16" y2="23"></line></svg>
+                        </button>
+                    </div>
+                    
+                    <select id="language-selector" class="p-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <option value="en-US" selected>English</option>
+                        <option value="ar-SA">العربية</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        window.onload = () => {
+            // --- THREE.JS AVATAR SETUP ---
+            const container = document.getElementById('avatar-container');
+            const scene = new THREE.Scene();
+            const camera = new THREE.PerspectiveCamera(75, container.clientWidth / container.clientHeight, 0.1, 1000);
+            const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+            renderer.setSize(container.clientWidth, container.clientHeight);
+            container.appendChild(renderer.domElement);
+
+            // Lighting
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+            scene.add(ambientLight);
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+            directionalLight.position.set(5, 10, 7.5);
+            scene.add(directionalLight);
+            
+            const loader = new THREE.GLTFLoader();
+
+            loader.load(
+                'man_head.glb', 
+                function (gltf) {
+                    gltf.scene.scale.set(1.5, 1.5, 1.5); 
+                    gltf.scene.position.set(0, 0, 0); 
+                    scene.add(gltf.scene);
+                },
+                undefined,
+                function (error) {
+                    console.error(error);
+                }
+            );
+
+            camera.position.z = 5;
+
+            function animate() {
+                requestAnimationFrame(animate);
+                renderer.render(scene, camera);
+            }
+            animate();
+
+            window.addEventListener('resize', () => {
+                camera.aspect = container.clientWidth / container.clientHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(container.clientWidth, container.clientHeight);
+            });
+
+            // --- CHAT LOGIC ---
+            const chatContainer = document.getElementById('chat-container');
+            const textInput = document.getElementById('text-input');
+            const sendBtn = document.getElementById('send-btn');
+            const micBtn = document.getElementById('mic-btn');
+            const micIcon = document.getElementById('mic-icon');
+            const typingIndicator = document.getElementById('typing-indicator');
+            const languageSelector = document.getElementById('language-selector');
+
+            // --- Gemini API Prompting ---
+            let chatHistory = [{
+                role: "user",
+                parts: [{
+                    text: "You are a knowledgeable virtual assistant. Answer user queries directly and concisely, providing only the information requested. After answering a question, ask the user if they want to know more about a related topic, like 'Do you want to know more about the mission and vision?' or 'Do you want to know more about how to contact the charity?'. Respond in the same language as the user's input."
+                }]
+            }, {
+                role: "user",
+                parts: [{
+                    text: "هذه مجموعة من الأسئلة والأجوبة حول جمعية إنسان الخيرية. استخدم هذه المعلومات للإجابة على الأسئلة المتعلقة بالجمعية:\n1. ما اسم الجمعية؟\nالجمعية تُعرف باسم الجمعية الخيرية لرعاية الأيتام بمنطقة الرياض (إنسان). \n2. متى تأسست الجمعية؟\nتأسست بأمر سامٍ صدر عام 1419هـ، وسُجّلت في الوزارة برقم 166 بتاريخ 28 شعبان 1420هـ (تقابل منتصف عام 1999م). \n3. من هم المستفيدون من خدمات الجمعية؟\nالجمعية تعنى برعاية الأيتام وأمهاتهم داخل منطقة الرياض—سواء كانوا سعوديين أو من جنسيات أخرى. \n4. ما أهداف ورسالة الجمعية؟\n• الرؤية: الريادة في تمكين المستفيد بمهنية عالية عبر منظومة مستدامة.\n• الرسالة: جمعية أهلية تعنى بأيتام منطقة الرياض وأمهاتهم لتمكينهم من حياة كريمة ببرامج نوعية وجودة عالية، بأسلوب يُكسبها ثقة المجتمع. \n5. ما قيم الجمعية؟\nالجمعية تسعى إلى:\n1. كرامة المستفيد\n2. التميز والجودة\n3. العدالة\n4. النزاهة والشفافية\n5. الولاء\n6. العمل الجماعي \n6. من هم أعضاء مجلس الإدارة الحالي؟\nبحسب أحدث البيانات المتوفرة، يرأس مجلس الإدارة الأمير فيصل بن بندر بن عبدالعزيز، بينما يرأس اللجنة التنفيذية الأمير أحمد بن فهد بن سلمان. \n7. كم عدد الفروع التي تُقدم عليها الجمعية خدماتها؟\nالجمعية تعمل من خلال 19 فرعًا تشمل أنحاء الرياض ومحافظات مثل الخرج، وادي الدواسر، الأفلاج، العليف، والعديد من المناطق الأخرى. \n8. كم عدد المستفيدين الذين تستفيد الجمعية منهم؟\nيستفيد من خدمات الجمعية أكثر من 40,000 يتيم ويتيمة، وأكثر من 9,500 أسرة. \n9. هل حصلت الجمعية على أي جوائز؟\nنعم، حصلت على عدة جوائز مرموقة منها:\n• جائزة الأمير نايف الذهبية للسعودة\n• المركز الأول في جائزة الشيخ فهد الأحمد الدولية للعمل الخيري\n• جائزة فوربس للشفافية (الأول في السعودية، الرابع على مستوى الوطن العربي)\n• جائزة الملك خالد\n• جائزة السعفة للنزاهة والشفافية\n• جائزة السبيعي للتميز في العمل الخيري\n• جائزة السنابل للمسؤولية الاجتماعية في البحرين \n10. كيف يمكن التواصل مع الجمعية أو الحصول على معلومات إضافية؟\nالجمعية مسجلة في وزارة الموارد البشرية والتنمية الاجتماعية برقم 166.\nللتواصل الهاتفي: الرقم هو 0114966666 — تحويلة 1013 أو 1135."
+                }]
+            }, {
+                role: "model",
+                parts: [{
+                    text: "أهلاً بك. كيف يمكنني خدمتك اليوم؟"
+                }]
+            }];
+
+            // --- SPEECH RECOGNITION (VOICE INPUT) ---
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            let recognition;
+            let isRecording = false;
+
+            if (SpeechRecognition) {
+                recognition = new SpeechRecognition();
+                recognition.continuous = false;
+                recognition.lang = '';
+                recognition.interimResults = false;
+                recognition.maxAlternatives = 1;
+
+                recognition.onstart = () => {
+                    isRecording = true;
+                    micIcon.classList.add('text-red-500');
+                    micBtn.classList.add('animate-pulse');
+                };
+
+                recognition.onend = () => {
+                    isRecording = false;
+                    micIcon.classList.remove('text-red-500');
+                    micBtn.classList.remove('animate-pulse');
+                };
+
+                recognition.onresult = (event) => {
+                    const transcript = event.results[0][0].transcript;
+                    const detectedLang = event.results[0].lang;
+                    
+                    languageSelector.value = detectedLang;
+                    
+                    textInput.value = transcript;
+                    sendMessage();
+                };
+
+                recognition.onerror = (event) => {
+                    console.error("Speech recognition error:", event.error);
+                    isRecording = false;
+                    micIcon.classList.remove('text-red-500');
+                    micBtn.classList.remove('animate-pulse');
+                };
+
+            } else {
+                micBtn.disabled = true;
+                console.log("Speech Recognition not supported in this browser.");
+            }
+
+            micBtn.addEventListener('click', () => {
+                if (!isRecording) {
+                    recognition.lang = '';
+                    recognition.start();
+                } else {
+                    recognition.stop();
+                }
+            });
+
+            // --- SPEECH SYNTHESIS (VOICE OUTPUT) ---
+            const synth = window.speechSynthesis;
+            let voices = [];
+
+            function populateVoiceList() {
+                voices = synth.getVoices();
+                if (voices.length === 0) {
+                    console.log("No voices found. This might be a browser issue or voices are still loading.");
+                }
+            }
+            
+            if (synth.onvoiceschanged !== undefined) {
+                synth.onvoiceschanged = populateVoiceList;
+            }
+            populateVoiceList();
+
+            function speak(text) {
+                // Stop any ongoing speech immediately
+                synth.cancel();
+
+                if (text !== '') {
+                    const utterThis = new SpeechSynthesisUtterance(text);
+                    
+                    utterThis.onstart = () => {
+                        console.log("Speech started. Animate your model's mouth here.");
+                    };
+
+                    utterThis.onend = function (event) {
+                        console.log('SpeechSynthesis.utterance.onend');
+                        console.log("Speech ended. Reset your model's mouth here.");
+                    }
+
+                    utterThis.onerror = function (event) {
+                        console.error('SpeechSynthesis.utterance.onerror', event);
+                        console.log("Speech error. Reset your model's mouth here.");
+                    }
+                    
+                    let selectedVoice;
+                    const selectedLanguage = languageSelector.value;
+
+                    if (selectedLanguage.startsWith('ar')) {
+                        selectedVoice = voices.find(voice => voice.lang.startsWith('ar') && voice.name.includes("Sayda") || voice.name.includes("Arabic"));
+                        if (!selectedVoice) {
+                            selectedVoice = voices.find(voice => voice.lang.startsWith('ar'));
+                            console.warn("Could not find a specific Arabic voice. Falling back to a generic one.");
+                        }
+                    } else { // Default to English if not Arabic
+                        selectedVoice = voices.find(voice => voice.lang.startsWith('en') && voice.name.includes("Google") || voice.name.includes("UK English") || voice.name.includes("US English"));
+                        if (!selectedVoice) {
+                            selectedVoice = voices.find(voice => voice.lang.startsWith('en'));
+                            console.warn("Could not find a specific English voice. Falling back to a generic one.");
+                        }
+                    }
+
+                    utterThis.voice = selectedVoice;
+                    synth.speak(utterThis);
+                }
+            }
+
+            // --- GEMINI API INTEGRATION ---
+            const apiKey = "AIzaSyCQUpC_2e4gOTFk27V8EOGQDYRWmoiZt10";
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
+
+            async function getGeminiResponse(prompt) {
+                typingIndicator.style.display = 'block';
+                chatContainer.scrollTop = chatContainer.scrollHeight;
+                
+                chatHistory.push({ role: "user", parts: [{ text: prompt }] });
+                
+                const payload = {
+                    contents: chatHistory,
+                };
+
+                let response;
+                let retries = 0;
+                const maxRetries = 5;
+                let delay = 1000;
+
+                while (retries < maxRetries) {
+                    try {
+                        response = await fetch(apiUrl, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(payload)
+                        });
+
+                        if (response.ok) {
+                            const result = await response.json();
+                            typingIndicator.style.display = 'none';
+                            if (result.candidates && result.candidates.length > 0 &&
+                                result.candidates[0].content && result.candidates[0].content.parts &&
+                                result.candidates[0].content.parts.length > 0) {
+                                const text = result.candidates[0].content.parts[0].text;
+                                chatHistory.push({ role: "model", parts: [{ text: text }] });
+                                return text;
+                            }
+                        } else if (response.status === 429 || response.status >= 500) {
+                            console.warn(`API request failed with status ${response.status}. Retrying in ${delay / 1000}s...`);
+                            await new Promise(resolve => setTimeout(resolve, delay));
+                            delay *= 2;
+                        } else {
+                            const errorResult = await response.json();
+                            console.error("API Error:", errorResult);
+                            typingIndicator.style.display = 'none';
+                            return "Sorry, I encountered an error. Please try again.";
+                        }
+                    } catch (error) {
+                        console.error("Fetch Error:", error);
+                        typingIndicator.style.display = 'none';
+                        if (retries < maxRetries) {
+                            await new Promise(resolve => setTimeout(resolve, delay));
+                            delay *= 2;
+                            retries++;
+                        } else {
+                            return "Sorry, I'm having trouble connecting. Please check your connection and try again.";
+                        }
+                    }
+                }
+                typingIndicator.style.display = 'none';
+                return "I'm currently unavailable. Please try again later.";
+            }
+
+            // --- UI AND CHAT FLOW ---
+            function addMessageToChat(text, sender) {
+                const messageDiv = document.createElement('div');
+                messageDiv.className = `flex items-start space-x-2 mb-4 ${sender === 'user' ? 'justify-end' : ''}`;
+                
+                // Bot avatar
+                const botAvatarUrl = './pics/ensan1.png'; 
+                
+                const messageBg = sender === 'user' ? 'bg-blue-500 text-white' : 'bg-gray-200 dark:bg-gray-700';
+                
+                let content;
+                if (sender === 'user') {
+                    content = `<div class="rounded-lg p-3 ${messageBg}">${text}</div>`;
+                } else {
+                    content = `<img src="${botAvatarUrl}" alt="Bot Avatar" class="w-10 h-10 rounded-full flex-shrink-0 order-1">
+                               <div class="rounded-lg p-3 ${messageBg} order-2">${text}</div>`;
+                }
+
+                messageDiv.innerHTML = content;
+                chatContainer.appendChild(messageDiv);
+                chatContainer.scrollTop = chatContainer.scrollHeight;
+            }
+
+            async function sendMessage() {
+                const userText = textInput.value.trim();
+                if (userText === '') return;
+
+                addMessageToChat(userText, 'user');
+                textInput.value = '';
+
+                const botResponse = await getGeminiResponse(userText);
+                addMessageToChat(botResponse, 'bot');
+                speak(botResponse);
+            }
+
+            sendBtn.addEventListener('click', sendMessage);
+            textInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    sendMessage();
+                }
+            });
+            
+            const initialGreeting = chatHistory.find(item => item.role === 'model').parts[0].text;
+            addMessageToChat(initialGreeting, 'bot');
+        };
+    </script>
+</body>
+</html>
