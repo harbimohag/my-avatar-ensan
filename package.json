@@ -4,7 +4,7 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "build": "tailwindcss -i ./src/input.css -o ./dist/output.css && cp index.html dist/index.html",
+    "build": "tailwindcss -i ./src/input.css -o ./dist/output.css && cp -r pics dist/ && cp index.html dist/",
     "watch": "tailwindcss -i ./src/input.css -o ./dist/output.css --watch"
 },
   "keywords": [],
@@ -17,3 +17,4 @@
   }
 
 }
+
